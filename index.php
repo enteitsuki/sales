@@ -19,93 +19,80 @@ $year = $_GET['year'];
 $branch = $_GET['branch'];
 $staff = $_GET['staff'];
 
+$sql_top = "SELECT
+                s.year,
+                s.month,
+                st.id AS staffs,
+                st.name AS staffs,
+                b.id AS branches,
+                b.name AS branches,
+                s.sale
+            FROM
+                sales s
+            INNER JOIN
+                staffs st
+            ON
+                s.staff_id = st.id
+            INNER JOIN
+                branches b
+            ON
+                st.branch_id = b.id";
+
+$sql_bottom = " ORDER BY
+                s.year ASC,
+                s.month ASC,
+                st.id ASC,
+                b.id ASC";
+
 if ($year) {
     if ($branch) {
         if ($staff) {
-            $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-            branches.id AS branches, branches.name AS branches
-            FROM sales
-            INNER JOIN staffs ON sales.staff_id = staffs.id
-            INNER JOIN branches ON staffs.branch_id = branches.id
-            WHERE year = :year AND branches.name = :branch AND staffs.name = :staff
-            ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+            $sql = "$sql_top" . ' WHERE s.year = :year AND b.id = :branch AND st.id = :staff' . "$sql_bottom";
             $stmt = $dbh->prepare($sql);
             $stmt->bindParam(':year', $year, PDO::PARAM_INT);
             $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
             $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
         } else {
-            $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-            branches.id AS branches, branches.name AS branches
-            FROM sales
-            INNER JOIN staffs ON sales.staff_id = staffs.id
-            INNER JOIN branches ON staffs.branch_id = branches.id
-            WHERE year = :year AND branches.name = :branch
-            ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+            $sql = "$sql_top" . ' WHERE s.year = :year AND b.id = :branch' . "$sql_bottom";
             $stmt = $dbh->prepare($sql);
             $stmt->bindParam(':year', $year, PDO::PARAM_INT);
             $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
         }
     } else {
-        $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-        branches.id AS branches, branches.name AS branches
-        FROM sales
-        INNER JOIN staffs ON sales.staff_id = staffs.id
-        INNER JOIN branches ON staffs.branch_id = branches.id
-        WHERE year = :year
-        ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
-        $stmt = $dbh->prepare($sql);
-        $stmt->bindParam(':year', $year, PDO::PARAM_INT);
+        if ($staff) {
+            $sql = "$sql_top" . ' WHERE s.year = :year AND st.id = :staff' . "$sql_bottom";
+            $stmt = $dbh->prepare($sql);
+            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
+            $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
+        } else {
+            $sql = "$sql_top" . ' WHERE s.year = :year' . "$sql_bottom";
+            $stmt = $dbh->prepare($sql);
+            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
+        }
     }
 } elseif ($branch) {
     if ($staff) {
-        $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-        branches.id AS branches, branches.name AS branches
-        FROM sales
-        INNER JOIN staffs ON sales.staff_id = staffs.id
-        INNER JOIN branches ON staffs.branch_id = branches.id
-        WHERE branches.name = :branch AND staffs.name = :staff
-        ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+        $sql = "$sql_top" . ' WHERE b.id = :branch AND st.id = :staff' . "$sql_bottom";
         $stmt = $dbh->prepare($sql);
         $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
         $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
     } else {
-        $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-        branches.id AS branches, branches.name AS branches
-        FROM sales
-        INNER JOIN staffs ON sales.staff_id = staffs.id
-        INNER JOIN branches ON staffs.branch_id = branches.id
-        WHERE branches.name = :branch
-        ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+        $sql = "$sql_top" . ' WHERE b.id = :branch' . "$sql_bottom";
         $stmt = $dbh->prepare($sql);
         $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
     }
 } elseif ($staff) {
-    $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-    branches.id AS branches, branches.name AS branches
-    FROM sales
-    INNER JOIN staffs ON sales.staff_id = staffs.id
-    INNER JOIN branches ON staffs.branch_id = branches.id
-    WHERE staffs.name = :staff
-    ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+    $sql = "$sql_top" . ' WHERE st.id = :staff' . "$sql_bottom";
     $stmt = $dbh->prepare($sql);
     $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
 } else {
-    $sql = "SELECT staffs.id AS staffs, staffs.name AS staffs, year, month, sale,
-    branches.id AS branches, branches.name AS branches
-    FROM sales
-    INNER JOIN staffs ON sales.staff_id = staffs.id
-    INNER JOIN branches ON staffs.branch_id = branches.id
-    ORDER BY year ASC, month ASC, staffs.id ASC, branches.id ASC";
+    $sql = "$sql_top" . "$sql_bottom";
     $stmt = $dbh->prepare($sql);
 }
 $stmt->execute();
 $sales = $stmt->fetchALL(PDO::FETCH_ASSOC);
-
-foreach ($sales as $sale) {
-    $sum += $sale['sale'];
-}
-$sum = number_format($sum);
 ?>
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -129,7 +116,7 @@ $sum = number_format($sum);
                 <select name="branch" size="1">
                     <option value=""></option>
                     <?php foreach ($branches as $branch) : ?>
-                        <option value="<?= h($branch['name']) ?>" <?= h($_GET['branch']) == h($branch['name']) ? 'selected' : '' ?>>
+                        <option value="<?= h($branch['id']) ?>" <?= $_GET['branch'] == $branch['id'] ? 'selected' : '' ?>>
                             <?= h($branch['name']) ?>
                         </option>
                     <?php endforeach; ?>
@@ -140,7 +127,7 @@ $sum = number_format($sum);
                 <select name="staff" size="1">
                     <option value=""></option>
                     <?php foreach ($staffs as $staff) : ?>
-                        <option value="<?= h($staff['name']) ?>" <?= h($_GET['staff']) == h($staff['name']) ? 'selected' : '' ?>>
+                        <option value="<?= h($staff['id']) ?>" <?= $_GET['staff'] == $staff['id'] ? 'selected' : '' ?>>
                             <?= h($staff['name']) ?>
                         </option>
                     <?php endforeach; ?>
@@ -151,24 +138,29 @@ $sum = number_format($sum);
             </div>
         </form>
         <table>
-            <tr>
-                <th>年</th>
-                <th>月</th>
-                <th>支店</th>
-                <th>従業員</th>
-                <th>売上</th>
-            </tr>
-            <?php foreach ($sales as $sale) : ?>
+            <thead>
                 <tr>
-                    <td><?= $sale['year'] ?></td>
-                    <td><?= $sale['month'] ?></td>
-                    <td><?= $sale['branches'] ?></td>
-                    <td><?= $sale['staffs'] ?></td>
-                    <td><?= $sale['sale'] ?></td>
+                    <th>年</th>
+                    <th>月</th>
+                    <th>支店</th>
+                    <th>従業員</th>
+                    <th>売上</th>
                 </tr>
-            <?php endforeach ?>
+            </thead>
+            <tbody>
+                <?php foreach ($sales as $sale) : ?>
+                    <tr>
+                        <td><?= $sale['year'] ?></td>
+                        <td><?= $sale['month'] ?></td>
+                        <td><?= $sale['branches'] ?></td>
+                        <td><?= $sale['staffs'] ?></td>
+                        <td><?= $sale['sale'] ?></td>
+                    </tr>
+                    <?php $sum += $sale['sale'] ?>
+                <?php endforeach ?>
+            </tbody>
         </table>
-        <h2>合計:<?= $sum ?>万円</h2>
+        <h2>合計:<?= number_format($sum) ?>万円</h2>
     </div>
 </body>
 
