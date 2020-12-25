@@ -5,8 +5,8 @@ require_once('functions.php');
 
 $dbh = connectDb();
 
-$sql = 'SELECT * FROM branches';
-$stmt = $dbh->prepare($sql);
+$sql3 = 'SELECT * FROM branches';
+$stmt = $dbh->prepare($sql3);
 $stmt->execute();
 $branches = $stmt->fetchALL(PDO::FETCH_ASSOC);
 
@@ -19,75 +19,66 @@ $year = $_GET['year'];
 $branch = $_GET['branch'];
 $staff = $_GET['staff'];
 
-$sql_top = "SELECT
-                s.year,
-                s.month,
-                st.id AS staffs,
-                st.name AS staffs,
-                b.id AS branches,
-                b.name AS branches,
-                s.sale
-            FROM
-                sales s
-            INNER JOIN
-                staffs st
-            ON
-                s.staff_id = st.id
-            INNER JOIN
-                branches b
-            ON
-                st.branch_id = b.id";
+$sql = <<< EOM
+SELECT
+    s.year,
+    s.month,
+    st.id AS staffs,
+    st.name AS staffs,
+    b.id AS branches,
+    b.name AS branches,
+    s.sale
+FROM
+    sales s
+INNER JOIN
+    staffs st
+ON
+    s.staff_id = st.id
+INNER JOIN
+    branches b
+ON
+    st.branch_id = b.id
+EOM;
 
-$sql_bottom = " ORDER BY
-                s.year ASC,
-                s.month ASC,
-                st.id ASC,
-                b.id ASC";
+$sql_order = <<< EOM
+    ORDER BY
+    s.year ASC,
+    s.month ASC,
+    st.id ASC,
+    b.id ASC
+EOM;
 
-if ($year) {
+$where = '';
+if ($year || $branch || $staff) {
+    if ($year) {
+        $where = 's.year = :year';
+    }
     if ($branch) {
-        if ($staff) {
-            $sql = "$sql_top" . ' WHERE s.year = :year AND b.id = :branch AND st.id = :staff' . "$sql_bottom";
-            $stmt = $dbh->prepare($sql);
-            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
-            $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
-            $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
-        } else {
-            $sql = "$sql_top" . ' WHERE s.year = :year AND b.id = :branch' . "$sql_bottom";
-            $stmt = $dbh->prepare($sql);
-            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
-            $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
+        if ($where) {
+            $where = $where . ' AND ';
         }
-    } else {
-        if ($staff) {
-            $sql = "$sql_top" . ' WHERE s.year = :year AND st.id = :staff' . "$sql_bottom";
-            $stmt = $dbh->prepare($sql);
-            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
-            $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
-        } else {
-            $sql = "$sql_top" . ' WHERE s.year = :year' . "$sql_bottom";
-            $stmt = $dbh->prepare($sql);
-            $stmt->bindParam(':year', $year, PDO::PARAM_INT);
-        }
+        $where = $where . 'b.id = :branch';
     }
-} elseif ($branch) {
     if ($staff) {
-        $sql = "$sql_top" . ' WHERE b.id = :branch AND st.id = :staff' . "$sql_bottom";
-        $stmt = $dbh->prepare($sql);
-        $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
-        $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
-    } else {
-        $sql = "$sql_top" . ' WHERE b.id = :branch' . "$sql_bottom";
-        $stmt = $dbh->prepare($sql);
-        $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
+        if ($where) {
+            $where = $where . ' AND ';
+        }
+        $where = $where . 'st.id = :staff';
     }
-} elseif ($staff) {
-    $sql = "$sql_top" . ' WHERE st.id = :staff' . "$sql_bottom";
-    $stmt = $dbh->prepare($sql);
+    $where = ' WHERE ' . $where;
+}
+
+$sql = $sql . $where . $sql_order;
+
+$stmt = $dbh->prepare($sql);
+if ($year) {
+    $stmt->bindParam(':year', $year, PDO::PARAM_INT);
+}
+if ($branch) {
+    $stmt->bindParam(':branch', $branch, PDO::PARAM_STR);
+}
+if ($staff) {
     $stmt->bindParam(':staff', $staff, PDO::PARAM_STR);
-} else {
-    $sql = "$sql_top" . "$sql_bottom";
-    $stmt = $dbh->prepare($sql);
 }
 $stmt->execute();
 $sales = $stmt->fetchALL(PDO::FETCH_ASSOC);
