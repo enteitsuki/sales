@@ -41,7 +41,8 @@ ON
 EOM;
 
 $sql_order = <<< EOM
-    ORDER BY
+
+ORDER BY
     s.year ASC,
     s.month ASC,
     st.id ASC,
@@ -55,20 +56,20 @@ if ($year || $branch || $staff) {
     }
     if ($branch) {
         if ($where) {
-            $where = $where . ' AND ';
+            $where .= ' AND ';
         }
-        $where = $where . 'b.id = :branch';
+        $where .= 'b.id = :branch';
     }
     if ($staff) {
         if ($where) {
-            $where = $where . ' AND ';
+            $where .= ' AND ';
         }
-        $where = $where . 'st.id = :staff';
+        $where .= 'st.id = :staff';
     }
     $where = ' WHERE ' . $where;
 }
 
-$sql = $sql . $where . $sql_order;
+$sql .= $where . $sql_order;
 
 $stmt = $dbh->prepare($sql);
 if ($year) {
